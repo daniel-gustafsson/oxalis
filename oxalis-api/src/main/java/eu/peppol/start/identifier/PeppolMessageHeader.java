@@ -16,6 +16,9 @@ public class PeppolMessageHeader {
     ParticipantId senderId;
     PeppolDocumentTypeId documentTypeIdentifier;
     PeppolProcessTypeId peppolProcessTypeId;
+    String senderSubject;
+    String senderCert;
+    String samlAssertionXml;
 
     public MessageId getMessageId() {
         return messageId;
@@ -65,6 +68,31 @@ public class PeppolMessageHeader {
         this.peppolProcessTypeId = peppolProcessTypeId;
     }
 
+    public String getSenderSubject() {
+        return senderSubject;
+    }
+
+    public void SetSenderSubject(String value) {
+        senderSubject = value;
+    }
+
+    public String getSenderCert() {
+        return senderCert;
+    }
+
+    public void setSenderCert(String value) {
+        senderCert = value;
+    }
+
+    public String getSamlAssertionXml() {
+        return samlAssertionXml;
+    }
+
+    public void setSamlAssertionXml(String value)
+    {
+        samlAssertionXml = value;
+    }
+
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder();
@@ -75,6 +103,7 @@ public class PeppolMessageHeader {
         sb.append(", senderId=").append(senderId);
         sb.append(", documentTypeIdentifier=").append(documentTypeIdentifier);
         sb.append(", peppolProcessTypeId=").append(peppolProcessTypeId);
+        sb.append(", senderSubject=").append(senderSubject);
         sb.append('}');
         return sb.toString();
     }

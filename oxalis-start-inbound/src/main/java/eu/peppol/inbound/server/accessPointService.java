@@ -99,6 +99,7 @@ public class accessPointService {
         MessageContext messageContext = webServiceContext.getMessageContext();
         HeaderList headerList = (HeaderList) messageContext.get(JAXWSProperties.INBOUND_HEADER_LIST_PROPERTY);
         PeppolMessageHeader peppolMessageHeader = PeppolMessageHeaderParser.parseSoapHeaders(headerList);
+        PeppolMessageHeaderParser.parseSecurity(webServiceContext, peppolMessageHeader);
         return peppolMessageHeader;
     }
 

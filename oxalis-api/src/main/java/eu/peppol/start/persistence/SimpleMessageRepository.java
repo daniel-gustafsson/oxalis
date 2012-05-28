@@ -36,9 +36,17 @@ public class SimpleMessageRepository implements MessageRepository {
             File messageFullPath = new File(messageDirectory, messageFileName);
             saveDocument(document, messageFullPath);
 
+            String certFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + ".cer";
+            File certFilePath = new File(messageDirectory, certFileName);
+            saveSenderCert(peppolMessageHeader, certFilePath);
+
+            String samlFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + "_saml.xml";
+            File samlFilePath = new File(messageDirectory, samlFileName);
+            saveSamlAssertion(peppolMessageHeader, samlFilePath);
+
             String headerFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + ".txt";
             File messageHeaderFilePath = new File(messageDirectory, headerFileName);
-            saveHeader(peppolMessageHeader, messageHeaderFilePath, messageFullPath);
+            saveHeader(peppolMessageHeader, messageHeaderFilePath, messageFullPath, certFilePath, samlFilePath);
 
         } catch (Exception e) {
             throw new IllegalStateException("Unable to persist message " + peppolMessageHeader.getMessageId(), e);
@@ -63,7 +71,7 @@ public class SimpleMessageRepository implements MessageRepository {
     }
 
 
-    void saveHeader(PeppolMessageHeader peppolMessageHeader, File messageHeaderFilerPath, File messageFullPath) {
+    void saveHeader(PeppolMessageHeader peppolMessageHeader, File messageHeaderFilerPath, File messageFullPath, File certFullPath, File samlFullPath) {
         try {
             FileOutputStream fos = new FileOutputStream(messageHeaderFilerPath);
             PrintWriter pw = new PrintWriter(new OutputStreamWriter(fos, "UTF-8"));
@@ -73,12 +81,15 @@ public class SimpleMessageRepository implements MessageRepository {
             pw.append("TimeStamp=").format("%tFT%tT%tz\n", date,date,date);
 
             pw.append("MessageFileName=").append(messageFullPath.toString()).append('\n');
+            pw.append("CertFileName=").append(certFullPath.toString()).append('\n');
+            pw.append("SamlFileName=").append(samlFullPath.toString()).append('\n');
             pw.append(IdentifierName.MESSAGE_ID.stringValue()).append("=").append(peppolMessageHeader.getMessageId().stringValue()).append('\n');
             pw.append(IdentifierName.CHANNEL_ID.stringValue()).append("=").append(peppolMessageHeader.getChannelId().stringValue()).append('\n');
             pw.append(IdentifierName.RECIPIENT_ID.stringValue()).append('=').append(peppolMessageHeader.getRecipientId().stringValue()).append('\n');
             pw.append(IdentifierName.SENDER_ID.stringValue()).append('=').append(peppolMessageHeader.getSenderId().stringValue()).append('\n');
             pw.append(IdentifierName.DOCUMENT_ID.stringValue()).append('=').append(peppolMessageHeader.getDocumentTypeIdentifier().toString()).append('\n');
             pw.append(IdentifierName.PROCESS_ID.stringValue()).append('=').append(peppolMessageHeader.getPeppolProcessTypeId().toString()).append('\n');
+            pw.append("SenderSubject=").append(peppolMessageHeader.getSenderSubject()).append('\n');
             pw.close();
             log.debug("File " + messageHeaderFilerPath + " written");
 
@@ -86,6 +97,36 @@ public class SimpleMessageRepository implements MessageRepository {
             throw new IllegalStateException("Unable to create file " + messageHeaderFilerPath + "; " + e, e);
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException("Unable to create writer for " + messageHeaderFilerPath + "; " + e, e);
+        }
+    }
+
+    void saveSenderCert(PeppolMessageHeader header, File file)
+    {
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            PrintWriter pw = new PrintWriter(new OutputStreamWriter(fos, "UTF-8"));
+            pw.write(header.getSenderCert());
+            pw.close();
+            log.debug("File " + file + " written");
+        } catch (FileNotFoundException e) {
+            throw new IllegalStateException("Unable to create file " + file + "; " + e, e);
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("Unable to create writer for " + file + "; " + e, e);
+        }
+    }
+
+    void saveSamlAssertion(PeppolMessageHeader header, File file)
+    {
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            PrintWriter pw = new PrintWriter(new OutputStreamWriter(fos, "UTF-8"));
+            pw.write(header.getSamlAssertionXml());
+            pw.close();
+            log.debug("File " + file + " written");
+        } catch (FileNotFoundException e) {
+            throw new IllegalStateException("Unable to create file " + file + "; " + e, e);
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException("Unable to create writer for " + file + "; " + e, e);
         }
     }
 
@@ -136,9 +177,8 @@ public class SimpleMessageRepository implements MessageRepository {
             throw new IllegalArgumentException("peppolMessageHeader required");
         }
 
-        String path = String.format("%s/%s/%s",
+        String path = String.format("%s/%s",
                 peppolMessageHeader.getRecipientId().stringValue().replace(":", "_"),
-                peppolMessageHeader.getChannelId().stringValue(),
                 peppolMessageHeader.getSenderId().stringValue().replace(":", "_"));
         return new File(inboundMessageStore, path);
     }
@@ -154,9 +194,8 @@ public class SimpleMessageRepository implements MessageRepository {
             throw new IllegalArgumentException("peppolMessageHeader required");
         }
 
-        String path = String.format("%s/%s/%s",
+        String path = String.format("%s/%s",
                 peppolMessageHeader.getSenderId().stringValue().replace(":", "_"),
-                peppolMessageHeader.getChannelId().stringValue(),
                 peppolMessageHeader.getRecipientId().stringValue().replace(":", "_"));
         return new File(outboundMessageStore, path);
     }
