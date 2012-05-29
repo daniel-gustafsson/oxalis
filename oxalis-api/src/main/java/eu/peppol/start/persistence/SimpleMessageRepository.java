@@ -12,6 +12,8 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
 import java.util.Date;
+import java.text.SimpleDateFormat;
+import javax.xml.stream.*;
 
 /**
  * @author $Author$ (of last change)
@@ -32,7 +34,7 @@ public class SimpleMessageRepository implements MessageRepository {
 
 
         try {
-            String messageFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + ".xml";
+            String messageFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + "_message.xml";
             File messageFullPath = new File(messageDirectory, messageFileName);
             saveDocument(document, messageFullPath);
 
@@ -44,7 +46,7 @@ public class SimpleMessageRepository implements MessageRepository {
             File samlFilePath = new File(messageDirectory, samlFileName);
             saveSamlAssertion(peppolMessageHeader, samlFilePath);
 
-            String headerFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + ".txt";
+            String headerFileName = peppolMessageHeader.getMessageId().stringValue().replace(":", "_") + "_info.xml";
             File messageHeaderFilePath = new File(messageDirectory, headerFileName);
             saveHeader(peppolMessageHeader, messageHeaderFilePath, messageFullPath, certFilePath, samlFilePath);
 
@@ -71,32 +73,53 @@ public class SimpleMessageRepository implements MessageRepository {
     }
 
 
+    void writeElement(XMLStreamWriter xw, String name, String value) throws XMLStreamException
+    {
+        xw.writeStartElement(name);
+        xw.writeCharacters(value);
+        xw.writeEndElement();
+    }
+
     void saveHeader(PeppolMessageHeader peppolMessageHeader, File messageHeaderFilerPath, File messageFullPath, File certFullPath, File samlFullPath) {
         try {
             FileOutputStream fos = new FileOutputStream(messageHeaderFilerPath);
-            PrintWriter pw = new PrintWriter(new OutputStreamWriter(fos, "UTF-8"));
-            Date date = new Date();
+            XMLOutputFactory xf = XMLOutputFactory.newInstance();
+            XMLStreamWriter xw = xf.createXMLStreamWriter(fos, "UTF-8");
+
+            xw.writeStartDocument("UTF-8", "1.0");
+            xw.writeStartElement("Info");
 
             // Formats the current time and date according to the ISO8601 standard.
-            pw.append("TimeStamp=").format("%tFT%tT%tz\n", date,date,date);
+            Date date = new Date();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+            writeElement(xw, "TimeStamp", sdf.format(date));
 
-            pw.append("MessageFileName=").append(messageFullPath.toString()).append('\n');
-            pw.append("CertFileName=").append(certFullPath.toString()).append('\n');
-            pw.append("SamlFileName=").append(samlFullPath.toString()).append('\n');
-            pw.append(IdentifierName.MESSAGE_ID.stringValue()).append("=").append(peppolMessageHeader.getMessageId().stringValue()).append('\n');
-            pw.append(IdentifierName.CHANNEL_ID.stringValue()).append("=").append(peppolMessageHeader.getChannelId().stringValue()).append('\n');
-            pw.append(IdentifierName.RECIPIENT_ID.stringValue()).append('=').append(peppolMessageHeader.getRecipientId().stringValue()).append('\n');
-            pw.append(IdentifierName.SENDER_ID.stringValue()).append('=').append(peppolMessageHeader.getSenderId().stringValue()).append('\n');
-            pw.append(IdentifierName.DOCUMENT_ID.stringValue()).append('=').append(peppolMessageHeader.getDocumentTypeIdentifier().toString()).append('\n');
-            pw.append(IdentifierName.PROCESS_ID.stringValue()).append('=').append(peppolMessageHeader.getPeppolProcessTypeId().toString()).append('\n');
-            pw.append("SenderSubject=").append(peppolMessageHeader.getSenderSubject()).append('\n');
-            pw.close();
+            writeElement(xw, "MessageFileName", messageFullPath.toString());
+            writeElement(xw, "CertFileName", certFullPath.toString());
+            writeElement(xw, "SamlFileName", samlFullPath.toString());
+            writeElement(xw, IdentifierName.MESSAGE_ID.stringValue(), peppolMessageHeader.getMessageId().stringValue());
+            writeElement(xw, IdentifierName.CHANNEL_ID.stringValue(), peppolMessageHeader.getChannelId().stringValue());
+            writeElement(xw, IdentifierName.RECIPIENT_ID.stringValue(), peppolMessageHeader.getRecipientId().stringValue());
+            writeElement(xw, IdentifierName.SENDER_ID.stringValue(), peppolMessageHeader.getSenderId().stringValue());
+            writeElement(xw, IdentifierName.DOCUMENT_ID.stringValue(), peppolMessageHeader.getDocumentTypeIdentifier().toString());
+            writeElement(xw, IdentifierName.PROCESS_ID.stringValue(), peppolMessageHeader.getPeppolProcessTypeId().toString());
+            writeElement(xw, "SenderSubject", peppolMessageHeader.getSenderSubject());
+
+            xw.writeEndElement();
+
+            xw.close();
+            fos.close();
+
             log.debug("File " + messageHeaderFilerPath + " written");
 
         } catch (FileNotFoundException e) {
             throw new IllegalStateException("Unable to create file " + messageHeaderFilerPath + "; " + e, e);
         } catch (UnsupportedEncodingException e) {
             throw new IllegalStateException("Unable to create writer for " + messageHeaderFilerPath + "; " + e, e);
+        } catch (XMLStreamException e) {
+            throw new IllegalStateException("Unable to write xml to " + messageHeaderFilerPath + "; " + e, e);
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to write to " + messageHeaderFilerPath + "; " + e, e);
         }
     }
 
